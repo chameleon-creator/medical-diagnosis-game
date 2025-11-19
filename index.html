@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Adventure</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body>
+    <div id="app"></div>
+    <script>
+        let state = {
+            screen: 'menu',
+            case: 0,
+            score: 0,
+            hearts: 5,
+            coins: 0,
+            streak: 0,
+            answer: null,
+            sound: true
+        };
+
+        const cases = [
+            {emoji: "👧", name: "Mia, 8", bg: "pink", symptoms: ["Fever", "Sore throat", "White spots", "Swollen glands"], correct: "Strep Throat", opts: ["Cold", "Strep Throat", "Allergies", "Flu"], exp: "Needs antibiotics!", coins: 50},
+            {emoji: "👦", name: "Jake, 12", bg: "blue", symptoms: ["Dizzy", "Hungry", "Shaky", "Weak"], correct: "Low Blood Sugar", opts: ["Concussion", "Low Blood Sugar", "Dehydration", "Heat Stroke"], exp: "Needs juice!", coins: 50},
+            {emoji: "👴", name: "Mr. Johnson, 65", bg: "red", symptoms: ["Chest pain", "Arm numb", "Can't breathe", "Sweating"], correct: "Heart Attack", opts: ["Panic", "Heart Attack", "Heartburn", "Muscle"], exp: "Life saved!", coins: 100},
+            {emoji: "🐶", name: "Max (Dog)", bg: "green", symptoms: ["Won't eat", "Limping", "Whining", "Licking paw"], correct: "Injured Paw", opts: ["Tired", "Injured Paw", "Walk", "Hungry"], exp: "Pets need care!", coins: 60}
+        ];
+
+        function sound(f,d) {
+            if(!state.sound) return;
+            try{
+                const c=new AudioContext(),o=c.createOscillator(),g=c.createGain();
+                o.connect(g);g.connect(c.destination);o.frequency.value=f;
+                g.gain.setValueAtTime(0.3,c.currentTime);
+                g.gain.exponentialRampToValueAtTime(0.01,c.currentTime+d);
+                o.start();o.stop(c.currentTime+d);
+            }catch(e){}
+        }
+
+        function answer(a) {
+            sound(400,0.05);
+            state.answer = a;
+            const c = cases[state.case];
+            if(a === c.correct) {
+                sound(523,0.1);
+                setTimeout(()=>sound(659,0.1),100);
+                state.streak++;
+                state.score += 100 * state.streak;
+                state.coins += c.coins;
+            } else {
+                sound(200,0.3);
+                state.hearts--;
+                state.streak = 0;
+                if(state.hearts <= 0) {
+                    setTimeout(()=>{state.screen='over';render();},1500);
+                    return;
+                }
+            }
+            render();
+        }
+
+        function next() {
+            sound(400,0.05);
+            state.case++;
+            state.answer = null;
+            if(state.case >= cases.length) {
+                state.screen = 'win';
+            }
+            render();
+        }
+
+        function start() {
+            sound(400,0.05);
+            state = {...state, screen: 'play', case: 0, score: 0, hearts: 5, streak: 0, answer: null};
+            render();
+        }
+
+        function menu() {
+            sound(400,0.05);
+            state.screen = 'menu';
+            render();
+        }
+
+        function render() {
+            const app = document.getElementById('app');
+            
+            if(state.screen === 'menu') {
+                app.innerHTML = `
+                    <div class="min-h-screen bg-gradient-to-br from-cyan-400 via-blue-500 to-purple-600 flex items-center justify-center p-4">
+                        <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-2xl w-full">
+                            <div class="text-center mb-8">
+                                <div class="text-8xl mb-4">🏥</div>
+                                <h1 class="text-6xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">Doctor Adventure</h1>
+                                <p class="text-blue-600 text-2xl font-bold">Save lives with sound effects!</p>
+                            </div>
+                            <button onclick="state.sound=!state.sound;render()" class="w-full mb-4 px-6 py-3 rounded-full font-bold ${state.sound?'bg-green-500':'bg-gray-400'} text-white">
+                                ${state.sound?'🔊 Sound ON':'🔇 Sound OFF'}
+                            </button>
+                            <button onclick="start()" class="w-full bg-gradient-to-r from-blue-500 to-purple-500 text-white p-6 rounded-2xl text-3xl font-bold hover:scale-105 transition-all">
+                                ▶️ Start Game
+                            </button>
+                            <div class="mt-6 bg-yellow-100 p-4 rounded-xl text-center">
+                                <p class="text-2xl font-bold text-orange-700">💰 ${state.coins} Coins</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            else if(state.screen === 'play') {
+                const c = cases[state.case];
+                const bgColors = {pink:'from-pink-300 to-rose-300',blue:'from-blue-300 to-cyan-300',red:'from-red-300 to-orange-300',green:'from-green-300 to-emerald-300'};
+                const isCorrect = state.answer === c.correct;
+                
+                app.innerHTML = `
+                    <div class="min-h-screen bg-gradient-to-br ${bgColors[c.bg]} p-4 py-8">
+                        <div class="max-w-4xl mx-auto">
+                            <div class="bg-white rounded-3xl shadow-2xl p-8">
+                                <div class="flex justify-between items-center mb-6 flex-wrap gap-4">
+                                    <div class="flex gap-1">
+                                        ${[...Array(5)].map((_,i)=>`<span class="text-2xl">${i<state.hearts?'❤️':'🖤'}</span>`).join('')}
+                                    </div>
+                                    <div class="flex gap-3">
+                                        <div class="bg-yellow-100 px-4 py-2 rounded-full"><span class="font-bold">💰 ${state.coins}</span></div>
+                                        <div class="bg-purple-100 px-4 py-2 rounded-full"><span class="font-bold">Level ${state.case+1}</span></div>
+                                        <div class="bg-blue-100 px-4 py-2 rounded-full"><span class="font-bold">💯 ${state.score}</span></div>
+                                    </div>
+                                </div>
+                                ${state.streak>0?`<div class="text-center mb-4"><div class="inline-block bg-orange-500 text-white px-6 py-2 rounded-full font-bold">🔥 ${state.streak} Streak!</div></div>`:''}
+                                <div class="bg-blue-50 p-6 rounded-2xl mb-6">
+                                    <div class="flex items-center gap-4 mb-4">
+                                        <div class="text-7xl">${c.emoji}</div>
+                                        <h2 class="text-3xl font-bold">${c.name}</h2>
+                                    </div>
+                                    <div class="bg-white p-4 rounded-xl">
+                                        <p class="font-bold mb-2">Symptoms:</p>
+                                        <div class="grid grid-cols-2 gap-2">
+                                            ${c.symptoms.map(s=>`<div class="bg-blue-100 p-2 rounded text-sm font-semibold">${s}</div>`).join('')}
+                                        </div>
+                                    </div>
+                                </div>
+                                <h3 class="text-2xl font-bold text-center mb-4">🩺 Your Diagnosis?</h3>
+                                <div class="grid grid-cols-2 gap-3 mb-6">
+                                    ${c.opts.map(o=>`
+                                        <button onclick="answer('${o}')" ${state.answer?'disabled':''} 
+                                            class="p-4 rounded-xl font-bold ${
+                                                state.answer===o ? (o===c.correct?'bg-green-500 text-white':'bg-red-500 text-white') :
+                                                state.answer && o===c.correct ? 'bg-green-300' : 'bg-gray-100 hover:bg-blue-100'
+                                            }">
+                                            ${o}
+                                        </button>
+                                    `).join('')}
+                                </div>
+                                ${state.answer?`
+                                    <div class="p-6 rounded-xl mb-6 ${isCorrect?'bg-green-100':'bg-red-100'}">
+                                        <p class="text-2xl font-bold mb-2">${isCorrect?'✨ Correct!':'❌ Wrong!'}</p>
+                                        <p class="text-lg">${c.exp}</p>
+                                        ${isCorrect?`<p class="text-md mt-2 font-bold text-green-600">+${100*state.streak} points! +${c.coins} coins!</p>`:''}
+                                    </div>
+                                `:''}
+                                ${state.answer && isCorrect && state.hearts>0?`
+                                    <button onclick="next()" class="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl text-xl">
+                                        Next Patient →
+                                    </button>
+                                `:''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            else if(state.screen === 'over') {
+                app.innerHTML = `
+                    <div class="min-h-screen bg-gradient-to-br from-red-400 to-orange-500 flex items-center justify-center p-4">
+                        <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-2xl w-full text-center">
+                            <div class="text-8xl mb-4">💔</div>
+                            <h1 class="text-5xl font-bold mb-4 text-red-600">Game Over</h1>
+                            <p class="text-3xl mb-4">Final Score: ${state.score}</p>
+                            <p class="text-2xl mb-6">💰 ${state.coins} Coins</p>
+                            <button onclick="menu()" class="bg-blue-600 text-white font-bold py-4 px-8 rounded-2xl text-xl">Try Again</button>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            else if(state.screen === 'win') {
+                app.innerHTML = `
+                    <div class="min-h-screen bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center p-4">
+                        <div class="bg-white rounded-3xl shadow-2xl p-8 max-w-2xl w-full text-center">
+                            <div class="text-8xl mb-4">🏆</div>
+                            <h1 class="text-5xl font-bold mb-4 bg-gradient-to-r from-yellow-600 to-orange-600 bg-clip-text text-transparent">You Win!</h1>
+                            <p class="text-3xl mb-4">Final Score: ${state.score}</p>
+                            <p class="text-2xl mb-6">💰 ${state.coins} Coins!</p>
+                            <button onclick="menu()" class="bg-blue-600 text-white font-bold py-4 px-8 rounded-2xl text-xl">Play Again</button>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        render();
+    </script>
+</body>
+</html>
